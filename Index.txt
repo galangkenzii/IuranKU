@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IuranKU - Kelola Kas & Iuran</title>
+  
+  <!-- Tailwind CSS & Google Fonts -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  
+  <!-- html2pdf Library for PDF Export -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', 'sans-serif'],
+          },
+          colors: {
+            darkbg: '#080c0e',
+            cardbg: '#101815',
+            cardborder: '#1e2c26',
+            neon: '#00ffaa',
+            neonhover: '#00e699',
+            cardout: '#1f1416',
+            borderout: '#3b1c20',
+            dangerred: '#ff4d4d',
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    /* Custom Scrollbar & Micro-interactions */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #080c0e;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #1e2c26;
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #00ffaa;
+    }
+    .glass-card {
+      background: rgba(16, 24, 21, 0.85);
+      backdrop-filter: blur(12px);
+      border: 1px solid #1e2c26;
+    }
+    .neon-shadow {
+      box-shadow: 0 0 20px rgba(0, 255, 170, 0.15);
+    }
+    .neon-btn-shadow {
+      box-shadow: 0 0 15px rgba(0, 255, 170, 0.3);
+    }
+    @media print {
+      .no-print { display: none !important; }
+      body { background: #ffffff !important; color: #000000 !important; }
+      .print-area { border: none !important; box-shadow: none !important; }
+    }
+  </style>
+</head>
+<body class="bg-darkbg text-slate-100 font-sans min-h-screen pb-12 antialiased">
+
+  <!-- Top Bar / Navigation -->
+  <header class="no-print border-b border-cardborder bg-cardbg/80 sticky top-0 z-30 backdrop-blur-md">
+    <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-2xl bg-neon/10 border border-neon/30 flex items-center justify-center text-neon font-bold">
+          <!-- Inline SVG Icon Wallet -->
+          <svg class="w-6 h-6 stroke-current fill-none" viewBox="0 0 24 24" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M20 7h-7a2 2 0 0 0-2 2v9a2 2 0 0 0 2 2h7a2 2 0 0 0 2-2V9a2 2 0 0 0-2-2z"></path>
+            <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path>
+          </svg>
+        </div>
+        <div>
+          <h1 class="text-xl font-extrabold tracking-tight text-white flex items-center gap-2">
+            Iuran<span class="text-neon">KU</span>
+          </h1>
+          <p class="text-xs text-slate-400">Syabab At Tarbiyah</p>
+        </div>
+      </div>
+
+      <!-- Quick Export & Status -->
+      <div class="flex items-center space-x-2">
+        <button onclick="exportPDF()" class="no-print inline-flex items-center space-x-2 bg-slate-800/80 hover:bg-slate-700 text-slate-200 px-3.5 py-2 rounded-xl text-xs font-semibold border border-slate-700 transition duration-200">
+          <svg class="w-4 h-4 stroke-current fill-none" viewBox="0 0 24 24" stroke-width="2">
+            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+            <polyline points="14 2 14 8 20 8"></polyline>
+            <line x1="16" y1="13" x2="8" y2="13"></line>
+            <line x1="16" y1="17" x2="8" y2="17"></line>
+            <polyline points="10 9 9 9 8 9"></polyline>
+          </svg>
+          <span>Ekspor PDF</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="max-w-6xl mx-auto px-4 pt-6 space-y-6" id="printableContent">
+
+    <!-- Greeting & Quick Actions Header -->
+    <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gradient-to-r from-cardbg to-slate-900/60 p-6 rounded-3xl border border-cardborder">
+      <div>
+        <p class="text-xs uppercase tracking-wider font-semibold text-neon mb-1">Ringkasan Utama</p>
+        <h2 class="text-2xl font-bold text-white">Selamat Datang di IuranKU - SYABAB AT TARBIYAH</h2>
+        <p class="text-sm text-slate-400 mt-0.5">Catat kas, monitor pemasukan, dan kelola pengeluaran halaqah tarbiyah.</p>
+      </div>
+      
+      <!-- Action Buttons -->
+      <div class="no-print flex items-center gap-3">
+        <button onclick="openModal('Masuk')" class="flex-1 md:flex-none inline-flex items-center justify-center space-x-2 bg-neon hover:bg-neonhover text-slate-950 font-bold px-5 py-3 rounded-2xl transition duration-200 neon-btn-shadow text-sm">
+          <svg class="w-5 h-5 stroke-current fill-none" viewBox="0 0 24 24" stroke-width="2.5">
+            <line x1="12" y1="5" x2="12" y2="19"></line>
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          <span>Dana Masuk</span>
+        </button>
+        <button onclick="openModal('Keluar')" class="flex-1 md:flex-none inline-flex items-center justify-center space-x-2 bg-slate-900 hover:bg-cardout text-dangerred border border-dangerred/30 px-5 py-3 rounded-2xl transition duration-200 text-sm font-bold">
+          <svg class="w-5 h-5 stroke-current fill-none" viewBox="0 0 24 24" stroke-width="2.5">
+            <line x1="5" y1="12" x2="19" y2="12"></line>
+          </svg>
+          <span>Dana Keluar</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Dashboard Stats Grid -->
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <!-- Total Kas / Saldo -->
+      <div class="glass-card p-6 rounded-3xl relative overflow-hidden neon-shadow">
+        <div class="flex justify-between items-start mb-3">
+          <span class="text-xs font-medium uppercase tracking-wider text-slate-400">Total Saldo Kas</span>
+          <div class="p-2.5 rounded-xl bg-neon/10 text-neon border border-neon/20">
+            <svg class="w-5 h-5 stroke-current fill-none" viewBox="0 0 24 24" stroke-width="2">
+              <rect x="2" y="5" width="20" height="14" rx="2"></rect>
+              <line x1="2" y1="10" x2="22" y2="10"></line>
+            </svg>
+          </div>
+        </div>
+        <div class="text-3xl font-extrabold text-white tracking-tight" id="statTotalSaldo">Rp 0</div>
+        <p class="text-xs text-slate-400 mt-2 flex items-center gap-1">
+          <span class="inline-block w-2 h-2 rounded-full bg-neon"></span>
+          Saldo Bersih Real-time
+        </p>
+      </div>
+
+      <!-- Total Dana Masuk -->
+      <div class="glass-card p-6 rounded-3xl">
+        <div class="flex justify-between items-start mb-3">
+          <span class="text-xs font-medium uppercase tracking-wider text-slate-400">Total Dana Masuk</span>
+          <div class="p-2.5 rounded-xl bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+            <svg class="w-5 h-5 stroke-current fill-none" viewBox="0 0 24 24" stroke-width="2">
+              <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"></polyline>
+              <polyline points="17 6 23 6 23 12"></polyline>
+            </svg>
+          </div>
+        </div>
+        <div class="text-2xl font-bold text-emerald-400 tracking-tight" id="statTotalMasuk">Rp 0</div>
+        <p class="text-xs text-slate-500 mt-2">Akomodasi Kas & Iuran</p>
+      </div>
+
+      <!-- Total Dana Keluar -->
+      <div class="glass-card p-6 rounded-3xl">
+        <div class="flex justify-between items-start mb-3">
+          <span class="text-xs font-medium uppercase tracking-wider text-slate-400">Total Dana Keluar</span>
+          <div class="p-2.5 rounded-xl bg-red-500/10 text-dangerred border border-red-500/20">
+            <svg class="w-5 h-5 stroke-current fill-none" viewBox="0 0 24 24" stroke-width="2">
+              <polyline points="23 18 13.5 8.5 8.5 13.5 1 6"></polyline>
+              <polyline points="17 18 23 18 23 12"></polyline>
+            </svg>
+          </div>
+        </div>
+        <div class="text-2xl font-bold text-dangerred tracking-tight" id="statTotalKeluar">Rp 0</div>
+        <p class="text-xs text-slate-500 mt-2">Pengeluaran & Operasional</p>
+      </div>
+    </div>
+
+    <!-- Filters & Transaction History Table Section -->
+    <div class="glass-card rounded-3xl p-6 border border-cardborder">
+      
+      <!-- Section Header & Filters -->
+      <div class="no-print space-y-4 mb-6">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <h3 class="text-lg font-bold text-white flex items-center gap-2">
+            <svg class="w-5 h-5 text-neon stroke-current fill-none" viewBox="0 0 24 24" stroke-width="2">
+              <line x1="8" y1="6" x2="21" y2="6"></line>
+              <line x1="8" y1="12" x2="21" y2="12"></line>
+              <line x1="8" y1="18" x2="21" y2="18"></line>
+              <line x1="3" y1="6" x2="3.01" y2="6"></line>
+              <line x1="3" y1="12" x2="3.01" y2="12"></line>
+              <line x1="3" y1="18" x2="3.01" y2="18"></line>
+            </svg>
+            <span>Riwayat Transaksi Keuangan</span>
+          </h3>
+          <span id="recordCountBadge" class="text-xs px-3 py-1 rounded-full bg-slate-800 text-slate-300 border border-slate-700">0 Data</span>
+        </div>
+
+        <!-- Filter Controls Bar -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+          <!-- Search Input -->
+          <div class="relative">
+            <input type="text" id="searchInput" oninput="debounceSearch()" placeholder="Cari deskripsi / kategori..." class="w-full bg-slate-900/90 border border-cardborder focus:border-neon focus:ring-1 focus:ring-neon rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-500 outline-none transition">
+          </div>
+
+          <!-- Type Filter -->
+          <div>
+            <select id="typeFilter" onchange="applyFilters()" class="w-full bg-slate-900/90 border border-cardborder focus:border-neon focus:ring-1 focus:ring-neon rounded-xl px-3.5 py-2.5 text-xs text-white outline-none transition">
+              <option value="ALL">Semua Jenis (Masuk & Keluar)</option>
+              <option value="Masuk">Dana Masuk Saja</option>
+              <option value="Keluar">Dana Keluar Saja</option>
+            </select>
+          </div>
+
+          <!-- Start Date -->
+          <div>
+            <input type="date" id="startDateFilter" onchange="applyFilters()" class="w-full bg-slate-900/90 border border-cardborder focus:border-neon focus:ring-1 focus:ring-neon rounded-xl px-3 py-2 text-xs text-slate-300 outline-none transition">
+          </div>
+
+          <!-- End Date -->
+          <div>
+            <input type="date" id="endDateFilter" onchange="applyFilters()" class="w-full bg-slate-900/90 border border-cardborder focus:border-neon focus:ring-1 focus:ring-neon rounded-xl px-3 py-2 text-xs text-slate-300 outline-none transition">
+          </div>
+        </div>
+      </div>
+
+      <!-- Transactions Table -->
+      <div class="overflow-x-auto rounded-2xl border border-cardborder/60">
+        <table class="w-full text-left text-xs border-collapse">
+          <thead>
+            <tr class="bg-slate-900/80 text-slate-400 border-b border-cardborder uppercase tracking-wider font-semibold">
+              <th class="p-3.5">ID & Tanggal</th>
+              <th class="p-3.5">Jenis</th>
+              <th class="p-3.5">Kategori</th>
+              <th class="p-3.5">Deskripsi</th>
+              <th class="p-3.5 text-right">Nominal</th>
+              <th class="p-3.5 text-center no-print">Aksi</th>
+            </tr>
+          </thead>
+          <tbody id="transactionTableBody" class="divide-y divide-cardborder/40 text-slate-200">
+            <!-- Dynamic Content Rendered via JS -->
+          </tbody>
+        </table>
+      </div>
+
+      <!-- Empty State Container -->
+      <div id="emptyState" class="hidden text-center py-12">
+        <svg class="w-12 h-12 mx-auto text-slate-600 stroke-current fill-none mb-3" viewBox="0 0 24 24" stroke-width="1.5">
+          <circle cx="12" cy="12" r="10"></circle>
+          <line x1="8" y1="12" x2="16" y2="12"></line>
+        </svg>
+        <p class="text-sm font-semibold text-slate-400">Tidak ada riwayat transaksi ditemukan</p>
+        <p class="text-xs text-slate-600 mt-1">Coba sesuaikan kata kunci pencarian atau tanggal filter Anda.</p>
+      </div>
+
+      <!-- Lazy Loading / Load More Trigger -->
+      <div id="loadMoreContainer" class="no-print mt-6 text-center hidden">
+        <button onclick="loadNextPage()" id="btnLoadMore" class="inline-flex items-center space-x-2 bg-slate-800 hover:bg-slate-700 text-neon font-semibold px-5 py-2.5 rounded-xl border border-neon/30 text-xs transition duration-200">
+          <span>Muat Transaksi Lainnya</span>
+          <svg class="w-4 h-4 stroke-current fill-none" viewBox="0 0 24 24" stroke-width="2">
+            <polyline points="6 9 12 15 18 9"></polyline>
+          </svg>
+        </button>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- MODAL FORM (TAMBAH / EDIT TRANSAKSI) -->
+  <div id="transactionModal" class="no-print fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm hidden">
+    <div class="glass-card w-full max-w-lg rounded-3xl p-6 border border-cardborder relative shadow-2xl animate-fade-in">
+      
+      <!-- Close Button -->
+      <button onclick="closeModal()" class="absolute top-5 right-5 text-slate-400 hover:text-white p-1 rounded-lg hover:bg-slate-800">
+        <svg class="w-5 h-5 stroke-current fill-none" viewBox="0 0 24 24" stroke-width="2">
+          <line x1="18" y1="6" x2="6" y2="18"></line>
+          <line x1="6" y1="6" x2="18" y2="18"></line>
+        </svg>
+      </button>
+
+      <h3 class="text-lg font-bold text-white mb-1" id="modalTitle">Tambah Transaksi</h3>
+      <p class="text-xs text-slate-400 mb-5">Isi rincian transaksi dengan lengkap dan akurat.</p>
+
+      <form id="transactionForm" onsubmit="handleFormSubmit(event)" class="space-y-4">
+        <input type="hidden" id="formTxId" value="">
+        
+        <!-- Jenis Selector (Masuk / Keluar) -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1.5">Jenis Transaksi</label>
+          <div class="grid grid-cols-2 gap-3">
+            <button type="button" id="btnTypeMasuk" onclick="selectTypeInForm('Masuk')" class="py-2.5 rounded-xl text-xs font-bold border transition duration-150 flex items-center justify-center space-x-2">
+              <span>Dana Masuk</span>
+            </button>
+            <button type="button" id="btnTypeKeluar" onclick="selectTypeInForm('Keluar')" class="py-2.5 rounded-xl text-xs font-bold border transition duration-150 flex items-center justify-center space-x-2">
+              <span>Dana Keluar</span>
+            </button>
+          </div>
+          <input type="hidden" id="formJenis" value="Masuk">
+        </div>
+
+        <!-- Tanggal -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1.5">Tanggal Transaksi</label>
+          <input type="date" id="formTanggal" required class="w-full bg-slate-900 border border-cardborder focus:border-neon focus:ring-1 focus:ring-neon rounded-xl px-3.5 py-2.5 text-xs text-white outline-none">
+        </div>
+
+        <!-- Kategori -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1.5">Kategori</label>
+          <select id="formKategori" required class="w-full bg-slate-900 border border-cardborder focus:border-neon focus:ring-1 focus:ring-neon rounded-xl px-3.5 py-2.5 text-xs text-white outline-none">
+            <!-- Dynamic Options -->
+          </select>
+        </div>
+
+        <!-- Nominal -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1.5">Nominal (Rp)</label>
+          <input type="number" id="formNominal" required min="1" step="1" placeholder="Contoh: 150000" class="w-full bg-slate-900 border border-cardborder focus:border-neon focus:ring-1 focus:ring-neon rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-600 outline-none">
+        </div>
+
+        <!-- Deskripsi / Catatan -->
+        <div>
+          <label class="block text-xs font-semibold text-slate-300 mb-1.5">Deskripsi / Catatan</label>
+          <textarea id="formDeskripsi" rows="3" required placeholder="Tuliskan rincian atau keperluan transaksi..." class="w-full bg-slate-900 border border-cardborder focus:border-neon focus:ring-1 focus:ring-neon rounded-xl px-3.5 py-2.5 text-xs text-white placeholder-slate-600 outline-none resize-none"></textarea>
+        </div>
+
+        <!-- Form Submit Button -->
+        <div class="pt-2">
+          <button type="submit" id="btnSaveTx" class="w-full bg-neon hover:bg-neonhover text-slate-950 font-bold py-3 rounded-xl text-xs transition duration-200 neon-btn-shadow">
+            Simpan Transaksi
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- DELETE CONFIRMATION MODAL (No Browser confirm Alert) -->
+  <div id="deleteModal" class="no-print fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm hidden">
+    <div class="glass-card w-full max-w-md rounded-3xl p-6 border border-cardborder text-center shadow-2xl">
+      <div class="w-12 h-12 rounded-2xl bg-red-500/10 text-dangerred border border-red-500/20 flex items-center justify-center mx-auto mb-4">
+        <svg class="w-6 h-6 stroke-current fill-none" viewBox="0 0 24 24" stroke-width="2">
+          <polyline points="3 6 5 6 21 6"></polyline>
+          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+        </svg>
+      </div>
+      <h3 class="text-lg font-bold text-white mb-2">Hapus Transaksi Ini?</h3>
+      <p class="text-xs text-slate-400 mb-6">Tindakan ini akan menghapus permanen data dari database dan memperbarui total kas Anda.</p>
+      
+      <div class="flex items-center gap-3">
+        <button onclick="closeDeleteModal()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-semibold py-2.5 rounded-xl text-xs transition">
+          Batal
+        </button>
+        <button id="btnConfirmDelete" onclick="executeDelete()" class="flex-1 bg-dangerred hover:bg-red-600 text-white font-bold py-2.5 rounded-xl text-xs transition">
+          Ya, Hapus Data
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- CUSTOM TOAST NOTIFICATION SYSTEM -->
+  <div id="toast" class="no-print fixed bottom-5 right-5 z-50 transform translate-y-10 opacity-0 transition-all duration-300 pointer-events-none">
+    <div id="toastContent" class="glass-card px-4 py-3 rounded-2xl border border-neon/30 text-xs font-semibold text-white flex items-center space-x-2 shadow-2xl">
+      <span id="toastIcon"></span>
+      <span id="toastMessage">Pesan berhasil dikirim.</span>
+    </div>
+  </div>
+
+  <script>
+    // State Application
+    let state = {
+      transactions: [],
+      categories: [],
+      summary: { totalSaldo: 0, totalMasuk: 0, totalKeluar: 0 },
+      page: 1,
+      limit: 15,
+      hasMore: false,
+      search: '',
+      type: 'ALL',
+      startDate: '',
+      endDate: '',
+      pendingDeleteId: null,
+      searchTimer: null
+    };
+
+    // Initial Load Handler
+    document.addEventListener('DOMContentLoaded', function() {
+      // Set Default Date to Today in Form
+      const today = new Date().toISOString().split('T')[0];
+      document.getElementById('formTanggal').value = today;
+
+      // Safe Apps Script Runner Wrapper
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        fetchInitialData();
+      } else {
+        // Fallback Mock Data for Gemini Canvas Safe Preview Mode
+        loadMockData();
+      }
+    });
+
+    function fetchInitialData() {
+      showToast('Memuat data IuranKU...', 'info');
+      
+      // Get Categories
+      google.script.run
+        .withSuccessHandler(function(cats) {
+          state.categories = cats || [];
+          populateCategoryDropdown();
+        })
+        .getCategories();
+
+      // Get Summary
+      refreshSummary();
+
+      // Get Transactions Page 1
+      state.page = 1;
+      fetchTransactions(false);
+    }
+
+    function refreshSummary() {
+      if (typeof google === 'undefined') return;
+      google.script.run
+        .withSuccessHandler(function(summary) {
+          if (summary && !summary.error) {
+            state.summary = summary;
+            renderSummary();
+          }
+        })
+        .getDashboardSummary();
+    }
+
+    function fetchTransactions(append) {
+      if (typeof google === 'undefined') return;
+
+      const params = {
+        search: state.search,
+        type: state.type,
+        startDate: state.startDate,
+        endDate: state.endDate,
+        page: state.page,
+        limit: state.limit
+      };
+
+      google.script.run
+        .withSuccessHandler(function(res) {
+          if (res && !res.error) {
+            if (append) {
+              state.transactions = state.transactions.concat(res.transactions);
+            } else {
+              state.transactions = res.transactions;
+            }
+            state.hasMore = res.hasMore;
+            renderTransactions();
+            document.getElementById('recordCountBadge').innerText = res.total + ' Data';
+          }
+        })
+        .getTransactions(params);
+    }
+
+    // SAFE DOM RENDERING - String Concatenation without Nested Backticks
+    function renderTransactions() {
+      const tbody = document.getElementById('transactionTableBody');
+      const emptyState = document.getElementById('emptyState');
+      const loadMoreContainer = document.getElementById('loadMoreContainer');
+
+      if (!state.transactions || state.transactions.length === 0) {
+        tbody.innerHTML = '';
+        emptyState.classList.remove('hidden');
+        loadMoreContainer.classList.add('hidden');
+        return;
+      }
+
+      emptyState.classList.add('hidden');
+      let html = '';
+
+      for (let i = 0; i < state.transactions.length; i++) {
+        const item = state.transactions[i];
+        const isMasuk = item.jenis === 'Masuk';
+        const jenisBadge = isMasuk 
+          ? '<span class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">Masuk</span>'
+          : '<span class="inline-flex items-center px-2.5 py-1 rounded-full text-[10px] font-bold bg-red-500/10 text-dangerred border border-red-500/30">Keluar</span>';
+
+        const nominalFormatted = (isMasuk ? '+ ' : '- ') + formatRupiah(item.nominal);
+        const nominalColor = isMasuk ? 'text-emerald-400 font-bold' : 'text-dangerred font-bold';
+
+        // Classic String Concatenation
+        html += '<tr class="hover:bg-slate-900/60 transition duration-150">' +
+                  '<td class="p-3.5 whitespace-nowrap">' +
+                    '<div class="font-mono text-xs font-semibold text-neon">' + escapeHtml(item.id) + '</div>' +
+                    '<div class="text-[11px] text-slate-400 mt-0.5">' + escapeHtml(item.tanggal) + '</div>' +
+                  '</td>' +
+                  '<td class="p-3.5 whitespace-nowrap">' + jenisBadge + '</td>' +
+                  '<td class="p-3.5 whitespace-nowrap font-medium text-slate-200">' + escapeHtml(item.kategori) + '</td>' +
+                  '<td class="p-3.5 text-slate-300 max-w-xs truncate">' + escapeHtml(item.deskripsi) + '</td>' +
+                  '<td class="p-3.5 whitespace-nowrap text-right ' + nominalColor + '">' + nominalFormatted + '</td>' +
+                  '<td class="p-3.5 whitespace-nowrap text-center no-print">' +
+                    '<div class="flex items-center justify-center space-x-2">' +
+                      '<button onclick="openEditModal(\'' + item.id + '\')" class="p-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white transition" title="Edit">' +
+                        '<svg class="w-3.5 h-3.5 stroke-current fill-none" viewBox="0 0 24 24" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path></svg>' +
+                      '</button>' +
+                      '<button onclick="confirmDelete(\'' + item.id + '\')" class="p-1.5 rounded-lg bg-slate-800 hover:bg-red-950/50 text-slate-400 hover:text-dangerred transition" title="Hapus">' +
+                        '<svg class="w-3.5 h-3.5 stroke-current fill-none" viewBox="0 0 24 24" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>' +
+                      '</button>' +
+                    '</div>' +
+                  '</td>' +
+                '</tr>';
+      }
+
+      tbody.innerHTML = html;
+
+      if (state.hasMore) {
+        loadMoreContainer.classList.remove('hidden');
+      } else {
+        loadMoreContainer.classList.add('hidden');
+      }
+    }
+
+    function renderSummary() {
+      document.getElementById('statTotalSaldo').innerText = formatRupiah(state.summary.totalSaldo);
+      document.getElementById('statTotalMasuk').innerText = formatRupiah(state.summary.totalMasuk);
+      document.getElementById('statTotalKeluar').innerText = formatRupiah(state.summary.totalKeluar);
+    }
+
+    function populateCategoryDropdown() {
+      const select = document.getElementById('formKategori');
+      const currentJenis = document.getElementById('formJenis').value;
+      select.innerHTML = '';
+
+      const filtered = state.categories.filter(function(c) {
+        return c.type === currentJenis;
+      });
+
+      if (filtered.length === 0) {
+        const defaultOption = document.createElement('option');
+        defaultOption.value = 'Umum';
+        defaultOption.innerText = 'Umum';
+        select.appendChild(defaultOption);
+        return;
+      }
+
+      for (let i = 0; i < filtered.length; i++) {
+        const opt = document.createElement('option');
+        opt.value = filtered[i].name;
+        opt.innerText = filtered[i].name;
+        select.appendChild(opt);
+      }
+    }
+
+    function handleFormSubmit(e) {
+      e.preventDefault();
+
+      const txId = document.getElementById('formTxId').value;
+      const jenis = document.getElementById('formJenis').value;
+      const tanggalInput = document.getElementById('formTanggal').value;
+      const kategori = document.getElementById('formKategori').value;
+      const nominal = parseFloat(document.getElementById('formNominal').value) || 0;
+      const deskripsi = document.getElementById('formDeskripsi').value;
+
+      if (!nominal || nominal <= 0) {
+        showToast('Nominal harus lebih dari 0', 'error');
+        return;
+      }
+
+      // Convert date to DD/MM/YYYY format
+      const dateParts = tanggalInput.split('-');
+      const formattedDate = dateParts.length === 3 ? dateParts[2] + '/' + dateParts[1] + '/' + dateParts[0] : tanggalInput;
+
+      const payload = {
+        id: txId,
+        jenis: jenis,
+        tanggal: formattedDate,
+        kategori: kategori,
+        nominal: nominal,
+        deskripsi: deskripsi
+      };
+
+      /* OPTIMISTIC UI UPDATE */
+      if (!txId) {
+        const tempObj = {
+          id: 'TRX-TEMP',
+          tanggal: formattedDate,
+          jenis: jenis,
+          kategori: kategori,
+          nominal: nominal,
+          deskripsi: deskripsi
+        };
+        state.transactions.unshift(tempObj);
+        if (jenis === 'Masuk') {
+          state.summary.totalMasuk += nominal;
+        } else {
+          state.summary.totalKeluar += nominal;
+        }
+        state.summary.totalSaldo = state.summary.totalMasuk - state.summary.totalKeluar;
+        renderSummary();
+        renderTransactions();
+      }
+
+      closeModal();
+      showToast('Menyimpan data transaksi...', 'info');
+
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler(function(res) {
+            if (res && res.success) {
+              showToast(res.message, 'success');
+              refreshSummary();
+              state.page = 1;
+              fetchTransactions(false);
+            } else {
+              showToast(res ? res.message : 'Gagal menyimpan transaksi.', 'error');
+            }
+          })
+          .saveTransaction(payload);
+      } else {
+        showToast('Mode Standalone Preview: Transaksi tersimpan lokal', 'success');
+      }
+    }
+
+    function confirmDelete(id) {
+      state.pendingDeleteId = id;
+      document.getElementById('deleteModal').classList.remove('hidden');
+    }
+
+    function closeDeleteModal() {
+      state.pendingDeleteId = null;
+      document.getElementById('deleteModal').classList.add('hidden');
+    }
+
+    function executeDelete() {
+      const id = state.pendingDeleteId;
+      if (!id) return;
+
+      closeDeleteModal();
+
+      // OPTIMISTIC UI REMOVAL
+      const idx = state.transactions.findIndex(function(t) { return t.id === id; });
+      if (idx !== -1) {
+        const deletedItem = state.transactions[idx];
+        if (deletedItem.jenis === 'Masuk') {
+          state.summary.totalMasuk -= deletedItem.nominal;
+        } else {
+          state.summary.totalKeluar -= deletedItem.nominal;
+        }
+        state.summary.totalSaldo = state.summary.totalMasuk - state.summary.totalKeluar;
+        state.transactions.splice(idx, 1);
+        renderSummary();
+        renderTransactions();
+      }
+
+      showToast('Menghapus transaksi ' + id + '...', 'info');
+
+      if (typeof google !== 'undefined' && google.script && google.script.run) {
+        google.script.run
+          .withSuccessHandler(function(res) {
+            if (res && res.success) {
+              showToast(res.message, 'success');
+              refreshSummary();
+              state.page = 1;
+              fetchTransactions(false);
+            } else {
+              showToast(res ? res.message : 'Gagal menghapus transaksi.', 'error');
+            }
+          })
+          .deleteTransaction(id);
+      } else {
+        showToast('Mode Standalone Preview: Item berhasil dihapus', 'success');
+      }
+    }
+
+    function openModal(defaultType) {
+      document.getElementById('formTxId').value = '';
+      document.getElementById('modalTitle').innerText = defaultType === 'Masuk' ? 'Input Dana Masuk' : 'Input Dana Keluar';
+      document.getElementById('formNominal').value = '';
+      document.getElementById('formDeskripsi').value = '';
+      selectTypeInForm(defaultType || 'Masuk');
+      document.getElementById('transactionModal').classList.remove('hidden');
+    }
+
+    function openEditModal(id) {
+      const item = state.transactions.find(function(t) { return t.id === id; });
+      if (!item) return;
+
+      document.getElementById('formTxId').value = item.id;
+      document.getElementById('modalTitle').innerText = 'Edit Transaksi (' + item.id + ')';
+      selectTypeInForm(item.jenis);
+
+      // Convert DD/MM/YYYY to YYYY-MM-DD for date input
+      let isoDate = new Date().toISOString().split('T')[0];
+      if (item.tanggal && item.tanggal.indexOf('/') !== -1) {
+        const p = item.tanggal.split('/');
+        if (p.length === 3) isoDate = p[2] + '-' + p[1] + '-' + p[0];
+      }
+      document.getElementById('formTanggal').value = isoDate;
+      document.getElementById('formNominal').value = item.nominal;
+      document.getElementById('formDeskripsi').value = item.deskripsi;
+      
+      // Delay category selection to match populated options
+      setTimeout(function() {
+        document.getElementById('formKategori').value = item.kategori;
+      }, 50);
+
+      document.getElementById('transactionModal').classList.remove('hidden');
+    }
+
+    function closeModal() {
+      document.getElementById('transactionModal').classList.add('hidden');
+    }
+
+    function selectTypeInForm(type) {
+      document.getElementById('formJenis').value = type;
+      const btnIn = document.getElementById('btnTypeMasuk');
+      const btnOut = document.getElementById('btnTypeKeluar');
+
+      if (type === 'Masuk') {
+        btnIn.className = 'py-2.5 rounded-xl text-xs font-bold border transition duration-150 flex items-center justify-center space-x-2 bg-emerald-500/20 text-emerald-400 border-emerald-500/50';
+        btnOut.className = 'py-2.5 rounded-xl text-xs font-bold border transition duration-150 flex items-center justify-center space-x-2 bg-slate-900 text-slate-400 border-cardborder hover:bg-slate-800';
+      } else {
+        btnIn.className = 'py-2.5 rounded-xl text-xs font-bold border transition duration-150 flex items-center justify-center space-x-2 bg-slate-900 text-slate-400 border-cardborder hover:bg-slate-800';
+        btnOut.className = 'py-2.5 rounded-xl text-xs font-bold border transition duration-150 flex items-center justify-center space-x-2 bg-red-500/20 text-dangerred border-red-500/50';
+      }
+
+      populateCategoryDropdown();
+    }
+
+    function debounceSearch() {
+      clearTimeout(state.searchTimer);
+      state.searchTimer = setTimeout(function() {
+        applyFilters();
+      }, 350);
+    }
+
+    function applyFilters() {
+      state.search = document.getElementById('searchInput').value;
+      state.type = document.getElementById('typeFilter').value;
+      state.startDate = document.getElementById('startDateFilter').value;
+      state.endDate = document.getElementById('endDateFilter').value;
+      state.page = 1;
+      fetchTransactions(false);
+    }
+
+    function loadNextPage() {
+      if (!state.hasMore) return;
+      state.page += 1;
+      fetchTransactions(true);
+    }
+
+    function exportPDF() {
+      showToast('Menyiapkan dokumen PDF...', 'info');
+      const element = document.getElementById('printableContent');
+      const opt = {
+        margin:       [0.4, 0.4, 0.4, 0.4],
+        filename:     'Laporan_Kas_IuranKU_' + new Date().toISOString().slice(0,10) + '.pdf',
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true, backgroundColor: '#080c0e' },
+        jsPDF:        { unit: 'in', format: 'a4', orientation: 'landscape' }
+      };
+
+      if (typeof html2pdf !== 'undefined') {
+        html2pdf().set(opt).from(element).save().then(function() {
+          showToast('Laporan PDF berhasil diunduh.', 'success');
+        });
+      } else {
+        window.print();
+      }
+    }
+
+    function showToast(message, type) {
+      const toast = document.getElementById('toast');
+      const msg = document.getElementById('toastMessage');
+      const icon = document.getElementById('toastIcon');
+
+      msg.innerText = message;
+      if (type === 'error') {
+        icon.innerHTML = '<svg class="w-4 h-4 text-dangerred stroke-current fill-none" viewBox="0 0 24 24" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>';
+      } else if (type === 'success') {
+        icon.innerHTML = '<svg class="w-4 h-4 text-neon stroke-current fill-none" viewBox="0 0 24 24" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>';
+      } else {
+        icon.innerHTML = '<svg class="w-4 h-4 text-sky-400 stroke-current fill-none" viewBox="0 0 24 24" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="16" x2="12" y2="12"></line><line x1="12" y1="8" x2="12.01" y2="8"></line></svg>';
+      }
+
+      toast.classList.remove('translate-y-10', 'opacity-0');
+      toast.classList.add('translate-y-0', 'opacity-100');
+
+      setTimeout(function() {
+        toast.classList.remove('translate-y-0', 'opacity-100');
+        toast.classList.add('translate-y-10', 'opacity-0');
+      }, 3000);
+    }
+
+    function formatRupiah(number) {
+      return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(number || 0);
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      return String(text)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
+    }
+
+    // Canvas Safe Preview Mock Data Seeding
+    function loadMockData() {
+      state.categories = [
+        { id: 'CAT-1', name: 'Iuran Anggota', type: 'Masuk' },
+        { id: 'CAT-2', name: 'Konsumsi Tarbiyah', type: 'Keluar' },
+      ];
+      state.summary = { totalSaldo: 1015000, totalMasuk: 1250000, totalKeluar: 235000 };
+      state.transactions = [
+        { id: 'TRX-20260930-0001', tanggal: '30/09/2026', jenis: 'Masuk', kategori: 'Iuran Anggota', nominal: 500000, deskripsi: 'Iuran Kas Anggota Bulan September' },
+        { id: 'TRX-20260930-0002', tanggal: '30/09/2026', jenis: 'Keluar', kategori: 'Konsumsi Tarbiyah', nominal: 150000, deskripsi: 'Pembelian Konsumsi Pertemuan' },
+      ];
+      populateCategoryDropdown();
+      renderSummary();
+      renderTransactions();
+      document.getElementById('recordCountBadge').innerText = '4 Data (Preview Canvas)';
+    }
+  </script>
+</body>
+</html>
